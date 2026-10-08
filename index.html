@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef3ef">
+  <meta name="description" content="A simple BMI calculator with category and health risk information.">
+  <title>BMI Calculator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #eef3ef;
+      --ink: #17231d;
+      --muted: #5b6b62;
+      --surface: #fff;
+      --border: #cfdad2;
+      --accent: #1f6b4a;
+      --accent-hover: #17553b;
+      --focus: #8fc9aa;
+      --selected: #dff0e6;
+      --error: #a3261b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.5;
+    }
+
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2.2rem, 6vw, 3.4rem);
+      letter-spacing: -0.02em;
+    }
+
+    h2 { margin: 0 0 18px; font-size: 1.35rem; }
+    .lead { max-width: 58ch; margin: 0 0 32px; color: var(--muted); }
+    .layout { display: grid; grid-template-columns: 1fr 1.15fr; gap: 24px; }
+
+    .panel {
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    label { display: block; margin: 0 0 6px; font-size: 0.95rem; }
+
+    input {
+      width: 100%;
+      margin: 0 0 16px;
+      padding: 11px 12px;
+      background: #fbfdfb;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    input:focus-visible, button:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    button {
+      padding: 12px 20px;
+      background: var(--accent);
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--accent-hover); }
+    #result { min-height: 100px; margin-top: 24px; }
+    .bmi-value { font-size: 2.6rem; font-weight: bold; line-height: 1; }
+    .message { margin: 10px 0 0; }
+    .error { color: var(--error); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 9px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { font-weight: bold; }
+    tr.active td { background: var(--selected); font-weight: bold; }
+    .note { margin-top: 28px; color: var(--muted); font-size: 0.88rem; }
+
+    @media (max-width: 720px) {
+      main { padding-top: 32px; }
+      .layout { grid-template-columns: 1fr; }
+      .panel { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>BMI Calculator</h1>
+    <p class="lead">Enter your name, weight in pounds, and height in inches to estimate your body mass index (BMI).</p>
+
+    <div class="layout">
+      <section class="panel" aria-labelledby="calculator-heading">
+        <h2 id="calculator-heading">Calculate your BMI</h2>
+        <form id="calculator">
+          <label for="name">Name <span>(optional)</span></label>
+          <input id="name" name="name" type="text" autocomplete="given-name" placeholder="Your name">
+
+          <label for="weight">Weight (pounds)</label>
+          <input id="weight" name="weight" type="number" min="0.1" step="any" inputmode="decimal" required>
+
+          <label for="height">Height (inches)</label>
+          <input id="height" name="height" type="number" min="0.1" step="any" inputmode="decimal" required>
+
+          <button type="submit">Calculate BMI</button>
+        </form>
+        <div id="result" aria-live="polite" aria-atomic="true"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="categories-heading">
+        <h2 id="categories-heading">BMI categories</h2>
+        <table>
+          <thead>
+            <tr><th scope="col">BMI</th><th scope="col">Category</th><th scope="col">Health risk</th></tr>
+          </thead>
+          <tbody id="rows">
+            <tr data-max="18.5"><td>Below 18.5</td><td>Underweight</td><td>Minimal</td></tr>
+            <tr data-max="25"><td>18.5 to below 25</td><td>Normal weight</td><td>Minimal</td></tr>
+            <tr data-max="30"><td>25 to below 30</td><td>Overweight</td><td>Increased</td></tr>
+            <tr data-max="35"><td>30 to below 35</td><td>Obese</td><td>High</td></tr>
+            <tr data-max="40"><td>35 to below 40</td><td>Severely obese</td><td>Very high</td></tr>
+            <tr data-max="Infinity"><td>40 and above</td><td>Morbidly obese</td><td>Extremely high</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <p class="note">BMI is a general screening measure, not a diagnosis or a substitute for medical advice.</p>
+  </main>
+
+  <script>
+    const form = document.getElementById("calculator");
+    const result = document.getElementById("result");
+    const rows = [...document.querySelectorAll("#rows tr")];
+    const messages = [
+      "you are underweight.",
+      "you are in the normal weight range.",
+      "you are overweight.",
+      "you are obese.",
+      "you are severely obese.",
+      "you are morbidly obese."
+    ];
+
+    function categoryIndex(bmi) {
+      return rows.findIndex((row) => bmi < Number(row.dataset.max));
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      rows.forEach((row) => row.classList.remove("active"));
+      result.replaceChildren();
+
+      const name = document.getElementById("name").value.trim() || "Your BMI";
+      const weight = Number(document.getElementById("weight").value);
+      const height = Number(document.getElementById("height").value);
+
+      if (!Number.isFinite(weight) || !Number.isFinite(height) || weight <= 0 || height <= 0) {
+        const error = document.createElement("p");
+        error.className = "message error";
+        error.textContent = "Enter a valid weight and height greater than 0.";
+        result.append(error);
+        return;
+      }
+
+      const bmi = (weight * 703) / (height * height);
+      const index = categoryIndex(bmi);
+      rows[index].classList.add("active");
+
+      const value = document.createElement("div");
+      value.className = "bmi-value";
+      value.textContent = bmi.toFixed(2);
+
+      const message = document.createElement("p");
+      message.className = "message";
+      message.textContent = `${name}, ${messages[index]}`;
+
+      const assessment = document.createElement("p");
+      assessment.className = "message";
+      assessment.textContent = `Category: ${rows[index].cells[1].textContent} · Health risk: ${rows[index].cells[2].textContent}`;
+      result.append(value, message, assessment);
+    });
+  </script>
+</body>
+</html>
